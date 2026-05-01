@@ -1,0 +1,188 @@
+#!/system/bin/sh
+##########################################################################################
+# GhostGMS Module for Magisk and KernelSU
+# Authors: Kaushik, MiguVT
+# Version: 3.0
+##########################################################################################
+
+
+TIMEOUT=30
+
+mkdir -p "$MODPATH/logs" "$MODPATH/config"
+
+set_perm_recursive "$MODPATH" 0 0 0755 0644
+for script in service.sh veloxine.sh post-fs-data.sh; do
+  [ -f "$MODPATH/$script" ] && set_perm "$MODPATH/$script" 0 0 0755
+done
+
+# UI helper
+print_banner() {
+  ui_print "╭───────────────────────────────────────╮"
+  ui_print "│  $1"
+  ui_print "╰───────────────────────────────────────╯"
+}
+
+print_section() {
+  ui_print ""
+  ui_print "────────────────────────────────────────"
+  ui_print "$1"
+  ui_print "────────────────────────────────────────"
+  ui_print ""
+}
+
+choose_option() {
+  local prompt="$1"
+  local default="$2"
+  ui_print ""
+  print_banner "$prompt"
+  ui_print "🔼 = Yes | 🔽 = No  (Default/Recommended: $default)"
+  ui_print "Waiting up to ${TIMEOUT}s…"
+  while :; do
+    event=$(timeout "$TIMEOUT" getevent -qlc 1 2>/dev/null)
+    code=$?
+    # Timeout returns 124 (toybox) or 143 (BusyBox)
+    if [ "$code" -eq 124 ] || [ "$code" -eq 143 ]; then
+      [ "$default" = "Yes" ] && return 0 || return 1
+    fi
+    echo "$event" | grep -q "KEY_VOLUMEUP.*DOWN"   && return 0
+    echo "$event" | grep -q "KEY_VOLUMEDOWN.*DOWN" && return 1
+  done
+}
+
+# Banner
+print_section "📱 Welcome to GhostGMS 📱"
+ui_print "💤 Optimize Google Play Services"
+ui_print "🔋 Better battery"
+ui_print "🔒 Enhanced privacy"
+
+print_section "Setup Options"
+
+ui_print "Use Volume Up for YES, Volume Down for NO."
+ui_print ""
+
+# Main feature prompts
+choose_option "👻 Enable GMS Ghosting?" "Yes"
+ENABLE_GHOSTED=$?
+choose_option "📋 Disable GMS Logging?" "Yes"
+ENABLE_LOG_DISABLE=$?
+choose_option "🔧 Apply GMS-optimized system properties?" "Yes"
+ENABLE_SYS_PROPS=$?
+
+choose_option "🎨 Disable UI blur effects? (Can improve performance on some ROMs)" "No"
+ENABLE_BLUR_DISABLE=$?
+choose_option "⚙️ Disable intrusive GMS services?" "Yes"
+ENABLE_SERVICES_DISABLE=$?
+
+GMS_CATEGORIES="ADS TRACKING ANALYTICS REPORTING BACKGROUND UPDATE LOCATION GEOFENCE NEARBY CAST DISCOVERY SYNC CLOUD AUTH WALLET PAYMENT WEAR FITNESS"
+# Default values (1=Yes, 0=No)
+DISABLE_ADS=1; DISABLE_TRACKING=1; DISABLE_ANALYTICS=1; DISABLE_REPORTING=1; DISABLE_BACKGROUND=1; DISABLE_UPDATE=1
+DISABLE_LOCATION=0; DISABLE_GEOFENCE=0; DISABLE_NEARBY=0; DISABLE_CAST=0; DISABLE_DISCOVERY=0; DISABLE_SYNC=0
+DISABLE_CLOUD=0; DISABLE_AUTH=0; DISABLE_WALLET=0; DISABLE_PAYMENT=0; DISABLE_WEAR=0; DISABLE_FITNESS=0
+
+if [ "$ENABLE_SERVICES_DISABLE" -eq 0 ]; then
+  print_section "📋 GMS Service Categories"
+  ui_print "Select which GMS service types to disable:"
+  for cat in $GMS_CATEGORIES; do
+    case "$cat" in
+      ADS|TRACKING) emoji="🛑" ;;
+      ANALYTICS|REPORTING) emoji="📊" ;;
+      BACKGROUND|UPDATE) emoji="🔄" ;;
+      LOCATION|GEOFENCE) emoji="📍" ;;
+      NEARBY|CAST|DISCOVERY) emoji="📡" ;;
+      SYNC|CLOUD|AUTH) emoji="☁️" ;;
+      WALLET|PAYMENT) emoji="💰" ;;
+      WEAR|FITNESS) emoji="⌚️" ;;
+    esac
+    default="Yes"
+    eval "current_value=\"\$DISABLE_$cat\""
+    [ "$current_value" = "0" ] && default="No"
+    choose_option "$emoji Disable $cat services?" "$default"
+    [ $? -eq 0 ] && eval "DISABLE_$cat=1" || eval "DISABLE_$cat=0"
+  done
+fi
+
+
+
+# Show summary before proceeding
+print_section "📝 Configuration Summary"
+ui_print "Ghosting:         $([ "$ENABLE_GHOSTED" -eq 0 ] && echo Yes || echo No)"
+ui_print "Disable Logging:  $([ "$ENABLE_LOG_DISABLE" -eq 0 ] && echo Yes || echo No)"
+ui_print "System Props:     $([ "$ENABLE_SYS_PROPS" -eq 0 ] && echo Yes || echo No)"
+ui_print "Disable Blur:     $([ "$ENABLE_BLUR_DISABLE" -eq 0 ] && echo Yes || echo No)"
+ui_print "Service Disable:  $([ "$ENABLE_SERVICES_DISABLE" -eq 0 ] && echo Yes || echo No)"
+if [ "$ENABLE_SERVICES_DISABLE" -eq 0 ]; then
+  for cat in $GMS_CATEGORIES; do
+    eval "value=\"\$DISABLE_$cat\""
+    ui_print "$(printf '%-10s' "$cat"): $([ "$value" -eq 1 ] && echo Yes || echo No)"
+  done
+fi
+ui_print ""
+choose_option "Proceed with installation?" "Yes"
+[ $? -ne 0 ] && { ui_print "Installation cancelled."; exit 1; }
+
+# If user disabled system properties — remove system.prop so Magisk won't apply it.
+if [ "$ENABLE_SYS_PROPS" -ne 0 ]; then
+  rm -f "$MODPATH/system.prop"
+  ui_print "ℹ️  System props disabled — system.prop removed"
+fi
+
+# If user disabled Ghosting — remove the empty binary stubs from the module.
+# Without this, Magisk/KernelSU always bind-mounts system/ regardless of user choice,
+# which breaks logcat/logd/tombstoned even when the user explicitly said No to ghosting.
+if [ "$ENABLE_GHOSTED" -ne 0 ]; then
+  rm -rf "$MODPATH/system/bin"
+  rm -rf "$MODPATH/system/etc"
+  ui_print "ℹ️  Ghosting disabled — system overlays removed"
+fi
+
+chmod 755 "$MODPATH/config"
+
+# Create persistent fallback directory for APatch/KernelSU Next
+PERSISTENT_CONFIG="/data/local/tmp/ghostgms_config"
+mkdir -p "$PERSISTENT_CONFIG"
+chmod 755 "$PERSISTENT_CONFIG"
+
+{
+  echo "ENABLE_GHOSTED=$([ "$ENABLE_GHOSTED" -eq 0 ] && echo 1 || echo 0)"
+  echo "ENABLE_LOG_DISABLE=$([ "$ENABLE_LOG_DISABLE" -eq 0 ] && echo 1 || echo 0)"
+  echo "ENABLE_BLUR_DISABLE=$([ "$ENABLE_BLUR_DISABLE" -eq 0 ] && echo 1 || echo 0)"
+  echo "ENABLE_SERVICES_DISABLE=$([ "$ENABLE_SERVICES_DISABLE" -eq 0 ] && echo 1 || echo 0)"
+} > "$MODPATH/config/user_prefs"
+chmod 644 "$MODPATH/config/user_prefs"
+
+# Also save to persistent fallback location
+cp "$MODPATH/config/user_prefs" "$PERSISTENT_CONFIG/user_prefs"
+chmod 644 "$PERSISTENT_CONFIG/user_prefs"
+
+{
+  for cat in $GMS_CATEGORIES; do
+    eval "value=\"\$DISABLE_$cat\""
+    echo "DISABLE_${cat}=$value"
+  done
+} > "$MODPATH/config/gms_categories"
+chmod 644 "$MODPATH/config/gms_categories"
+
+# Also save to persistent fallback location
+cp "$MODPATH/config/gms_categories" "$PERSISTENT_CONFIG/gms_categories"
+chmod 644 "$PERSISTENT_CONFIG/gms_categories"
+
+# Validate config files were created
+if [ ! -f "$MODPATH/config/user_prefs" ] || [ ! -f "$MODPATH/config/gms_categories" ]; then
+  ui_print "⚠️ Warning: Config files may not have been created properly"
+  ui_print "This may cause issues on first boot with KernelSU Next/APatch"
+  ui_print "If service fails, reinstall the module or create files manually"
+else
+  # Verify persistent backup was also created
+  if [ -f "$PERSISTENT_CONFIG/user_prefs" ] && [ -f "$PERSISTENT_CONFIG/gms_categories" ]; then
+    ui_print "✅ Config files created successfully"
+    ui_print "📁 Saved to module and persistent backup location"
+  else
+    ui_print "✅ Config files created in module directory"
+    ui_print "⚠️ Warning: Persistent backup may not have been created"
+  fi
+fi
+
+# Completion message
+print_section "✅ GhostGMS Installation Complete"
+ui_print "🔄 Changes will take effect after reboot"
+ui_print "🙏 Thank you for using GhostGMS!"

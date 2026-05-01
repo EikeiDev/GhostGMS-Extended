@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GhostGMS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #060810;
+    --bg2: #0d1117;
+    --card: rgba(255,255,255,0.04);
+    --card-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --border-glow: rgba(0,240,255,0.25);
+    --accent: #00f0ff;
+    --accent2: #7c3aed;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --safe: #10b981;
+    --caution: #f59e0b;
+    --danger: #ef4444;
+    --core: #6366f1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 120px 0;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,240,255,0.06), transparent),
+      radial-gradient(ellipse 60% 30% at 80% 80%, rgba(124,58,237,0.04), transparent);
+  }
+
+  /* ── LOADER ── */
+  #loader {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 1000; gap: 16px;
+  }
+  .ghost-icon { font-size: 52px; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .loader-text { color: var(--muted); font-size: 13px; letter-spacing: 1px; }
+  .pulse-ring {
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    animation: spin 1s linear infinite;
+    position: absolute;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 28px 20px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .header-title {
+    font-size: 30px; font-weight: 800;
+    background: linear-gradient(135deg, #fff 20%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .header-sub { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; }
+  .status-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-active { background: rgba(16,185,129,0.12); color: var(--safe); border: 1px solid rgba(16,185,129,0.25); }
+  .badge-count  { background: rgba(0,240,255,0.08); color: var(--accent); border: 1px solid rgba(0,240,255,0.2); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── SECTIONS ── */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent); opacity: 0.7;
+    padding: 18px 20px 8px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    margin: 0 12px 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+  .card:active { background: var(--card-hover); }
+  .card.disabled-card { opacity: 0.4; pointer-events: none; }
+
+  .card-left { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .card-label {
+    font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 7px;
+  }
+  .card-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  .safety-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .s-safe    { background: var(--safe); box-shadow: 0 0 6px var(--safe); }
+  .s-caution { background: var(--caution); box-shadow: 0 0 6px var(--caution); }
+  .s-danger  { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+  .s-core    { background: var(--core); box-shadow: 0 0 6px var(--core); }
+
+  /* ── TOGGLE ── */
+  .switch { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: rgba(255,255,255,0.1); border-radius: 26px;
+    transition: background 0.25s;
+  }
+  .slider::before {
+    content: ''; position: absolute;
+    width: 20px; height: 20px; border-radius: 50%;
+    left: 3px; bottom: 3px;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+  }
+  input:checked + .slider { background: var(--accent); box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+  input:checked + .slider::before { transform: translateX(22px); }
+
+  /* Master switch — bigger */
+  .master-card { border-color: rgba(0,240,255,0.15); background: rgba(0,240,255,0.04); }
+
+  /* ── CATEGORIES GRID ── */
+  #cat-grid { margin: 0 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 4px;
+    transition: background 0.2s;
+  }
+  .cat-card-top { 
+    display: flex; align-items: center; justify-content: space-between; 
+    min-height: 24px; width: 100%;
+  }
+  .cat-card-top .switch {
+    transform: scale(0.8) !important;
+    transform-origin: right center;
+    margin-right: -4px;
+    flex-shrink: 0;
+  }
+  .cat-name { font-size: 13px; font-weight: 600; flex: 1; margin-right: 6px; }
+  .cat-desc { 
+    font-size: 10px; color: var(--muted); line-height: 1.2; 
+    display: flex; align-items: center;
+  }
+  .safety-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    margin-right: 6px; flex-shrink: 0;
+  }
+  .cat-card.disabled-card { opacity: 0.35; pointer-events: none; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 4px 20px 12px; }
+
+  /* ── ACTION BAR ── */
+  .action-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 12px 16px 20px;
+    background: rgba(6,8,16,0.92);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px;
+  }
+  .btn {
+    flex: 1; padding: 15px; border-radius: 14px; border: none;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0090aa);
+    color: #000;
+    box-shadow: 0 4px 20px rgba(0,240,255,0.25);
+  }
+  .btn-primary:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(0,240,255,0.2); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.07); color: var(--text);
+    border: 1px solid var(--border); flex: 0 0 auto; padding: 15px 20px;
+  }
+  .btn-secondary:active { background: rgba(255,255,255,0.12); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(30,35,48,0.95); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 20px; border-radius: 12px;
+    font-size: 13px; opacity: 0; transition: all 0.3s;
+    pointer-events: none; white-space: nowrap; backdrop-filter: blur(16px);
+    z-index: 500;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div style="position:relative;width:60px;height:60px;display:flex;align-items:center;justify-content:center;">
+    <div class="pulse-ring"></div>
+    <span class="ghost-icon" style="position:relative;font-size:28px;">👻</span>
+  </div>
+  <span class="loader-text">CONNECTING TO KERNEL...</span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div style="font-size:40px">👻</div>
+  <div class="header-title">GhostGMS</div>
+  <div class="header-sub">Google Play Services Optimizer</div>
+  <div class="status-row">
+    <span class="badge badge-active"><span class="dot"></span>Module Active</span>
+    <span class="badge badge-count" id="status-badge">Loading...</span>
+  </div>
+</div>
+
+<!-- CORE FEATURES -->
+<div class="section-label">Core Features</div>
+
+<div class="card" id="card-ENABLE_GHOSTED">
+  <div class="card-left">
+    <div class="card-label"><span class="safety-dot s-safe"></span>GMS Ghosting</div>
+    <div class="card-desc">Replace debug binaries with empty stubs (logcat, tombstoned, traced…)</div>
+  </div>
+  <label class="switch"><input type="checkbox" id="ENABLE_GHOSTED"><span class="slider"></span></label>
+</div>
+
+<div class="card" id="card-ENABLE_LOG_DISABLE">
+  <div class="card-left">
+    <div class="card-label"><span class="safety-dot s-safe"></span>Disable GMS Logging</div>
+    <div class="card-desc">Zero out clearcut, analytics & usage stat settings</div>
+  </div>
+  <label class="switch"><input type="checkbox" id="ENABLE_LOG_DISABLE"><span class="slider"></span></label>
+</div>
+
+<div class="card" id="card-ENABLE_BLUR_DISABLE">
+  <div class="card-left">
+    <div class="card-label"><span class="safety-dot s-caution"></span>Disable UI Blurs</div>
+    <div class="card-desc">May improve performance on some ROMs. Requires reboot.</div>
+  </div>
+  <label class="switch"><input type="checkbox" id="ENABLE_BLUR_DISABLE"><span class="slider"></span></label>
+</div>
+
+<div class="divider"></div>
+
+<!-- SERVICE ENGINE -->
+<div class="section-label">Service Engine</div>
+
+<div class="card master-card" id="card-ENABLE_SERVICES_DISABLE">
+  <div class="card-left">
+    <div class="card-label"><span class="safety-dot s-core"></span>Service Blocking Engine</div>
+    <div class="card-desc">Master switch — enables per-category pm disable/enable</div>
+  </div>
+  <label class="switch"><input type="checkbox" id="ENABLE_SERVICES_DISABLE"><span class="slider"></span></label>
+</div>
+
+<div class="section-label" id="cat-label" style="padding-top:10px">Service Categories</div>
+<div id="cat-grid"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <button class="btn btn-secondary" id="btn-refresh" title="Reload config">↺</button>
+  <button class="btn btn-primary" id="btn-apply">SAVE &amp; APPLY</button>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>

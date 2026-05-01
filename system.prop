@@ -1,0 +1,181 @@
+# Logging Tweaks
+# Disables Real-Time Transport Protocol (RTP) logging.
+config.disable_rtt=true
+
+# Disables logging related to native code interaction.
+dalvik.vm.checkjni=false
+
+# Stops logging slow database queries.
+db.log.slow_query_threshold=0
+
+# Disables debugging logs related to Qualcomm's Sensor Network Services (SNS).
+debug.qualcomm.sns.hal=0 
+debug.qualcomm.sns.daemon=0 
+debug.qualcomm.sns.libsensor1=0
+
+# Disables profiling logs for the EGL graphics API.
+debug.egl.profiler=0
+
+# Disables logging related to gamed and Wayland.
+debug.enable.gamed=0
+debug.enable.wl_log=0
+
+# Disables logging related to the Hardware Composer (HWC) and SurfaceFlinger components.
+debug.hwc.otf=0
+debug.hwc_dump_en=0
+debug.sf.dump=0
+debug.sf.ddms=0
+
+# Disables logging related to surface re-computations.
+debug.sf.recomputecrop=0
+
+# Disables logging of Application Not Responding (ANR) events.
+debugtool.anrhistory=0
+
+# Disables real-time logcat output and streaming.
+logcat.live=disable
+live.logcat=disable
+
+# Disables TCP metrics logging.
+net.ipv4.tcp_no_metrics_save=1
+
+# Disables logging related to the Stagefright media framework.
+media.stagefright.log-uri=0
+
+# Disables various profiling tools.
+profiler.debugmonitor=false
+profiler.launch=false
+profiler.hung.dumpdobugreport=false
+
+# Disables StrictMode, which checks for potential performance and security issues.
+persist.android.strictmode=0
+
+# Disables "checkin" logging that sends system information to Google.
+ro.config.nocheckin=1
+
+# Disables debugging capabilities for the device.
+ro.debuggable=0
+
+# Sets the log buffer size to zero, effectively disabling the log system.
+ro.logd.size=16
+
+# Disables JNI checks and QEMU-related logging.
+ro.kernel.android.checkjni=0
+ro.kernel.qemu.gles=0
+ro.kernel.checkjni=0
+
+# Disables battery-related logging.
+ro.sf.battery_log=0
+ro.sf.battery.log.enabled=0
+
+# Disables the RW logger, used for debugging network interactions.
+rw.logger=0
+
+# Disables IMS (IP Multimedia Subsystem) debug logs.
+persist.ims.disableDebugLogs=1
+
+# Disables debugging related to Wi-Fi Direct (WFD).
+persist.debug.wfd.enable=0
+
+# Disables QMI (Qualcomm MSM Interface) logging for ADB.
+persist.data.qmi.adb_logmask=0
+
+# Disables debug logging for the sensors HAL (Hardware Abstraction Layer).
+persist.debug.sensors.hal=0 
+
+# Disables logging and crash reports related to Broadcom components.
+persist.brcm.log=none 
+persist.brcm.cp_crash=none 
+persist.brcm.ap_crash=none
+
+# Disables OEM-specific dumps.
+persist.oem.dump=0
+
+# Enables offline logging for the kernel and logcat. 
+persist.sys.offlinelog.kernel=1
+persist.sys.offlinelog.logcat=1
+
+# Forces disabling error reports and ulog.
+profiler.forse_disable_err_rpt=1
+profiler.forse_disable_ulog=1
+
+# Disables video decoder debugging.
+vidc.debug.level=0
+
+# Disables various SurfaceFlinger display options.
+debug.sf.showupdates=0
+debug.sf.showcpu=0
+debug.sf.showbackground=0
+debug.sf.showfps=0
+
+# Disables specific tags for the "atrace" profiling tool.
+debug.atrace.tags.enableflags=0
+
+# Disables logging for specific services.
+persist.service.pcsync.enable=0
+persist.service.lgospd.enable=0
+persist.service.logging.disable=true
+
+# Disables redirecting standard input/output to the log system.
+log.redirect-stdio=false
+
+# Disables debug logging for memory allocation.
+libc.debug.malloc=0
+
+# Disables persistent caching for the A/V system.
+av.debug.disable.pers.cache=true
+
+# Disables enabling RAM dumps for the SSR (System Server Recovery) service.
+persist.vendor.ssr.enable_ramdumps=0
+
+# Disables various log outputs related to the system's core functionality
+log.resolves=0
+log.pm4=0
+log.pm4mem=0
+log.shaders=0
+log.sc_dev=0
+log.cffdump=0
+log.cffdump_with_ifh=0         
+log.cffdump_no_memzero=0    
+log.dumpx=0 
+log.primitives=0
+log_frame_info=0
+log_mp4dectime=0
+log_posttime=0
+log_profile=0
+log_playerdriver=0
+log_metadatadriver=0
+log_playerengine=0
+log_datapath=0
+log_mp4parsernode=0
+log_basedecnode=0
+log_audiodecnode=0
+log_videodecnode=0
+log_outputnode=0
+log_outputnodeinputport=0
+log_audiooutput=0
+log_surfaceoutput=0
+log_omxmp4=0
+log_ao=0
+log_fps_interval=0
+
+# Disables debug-specific logging and testing.
+debug_test=0
+
+# GMS Related Properties
+
+# GMS optimizations
+ro.com.google.gmsversion=12_202304
+ro.com.google.clientidbase=android-google
+ro.com.google.clientidbase.ms=android-google
+ro.com.google.clientidbase.am=android-google
+ro.com.google.clientidbase.gmm=android-google
+ro.com.google.clientidbase.yt=android-google
+ro.error.receiver.system.apps=com.google.android.gms
+ro.setupwizard.mode=OPTIONAL
+ro.setupwizard.enterprise_mode=1
+ro.setupwizard.rotation_locked=true
+ro.setupwizard.gservices_delay=-1
+setupwizard.feature.predeferred_enabled=false
+setupwizard.feature.baseline_setupwizard_enabled=false
+ro.control_privapp_permissions=enforce

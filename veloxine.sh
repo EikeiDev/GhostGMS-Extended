@@ -1,0 +1,337 @@
+#!/system/bin/sh
+##########################################################################################
+# GhostGMS Service Script
+# Authors: Kaushik, MiguVT
+# Version: 3.0
+##########################################################################################
+
+# Check for command line arguments
+COMMAND=${1:-"status"}
+
+# Derive MODDIR from script location (matches service.sh behavior)
+# Avoids hardcoding path which breaks when module id case differs
+MODDIR="${0%/*}"
+
+# Persistent fallback directory (same as service.sh and customize.sh)
+PERSISTENT_CONFIG="/data/local/tmp/ghostgms_config"
+
+# Set up logging
+LOGDIR="$MODDIR/logs"
+mkdir -p "$LOGDIR" 2>/dev/null
+# If module logs dir isn't writable, fall back to persistent location
+if [ ! -d "$LOGDIR" ] || [ ! -w "$LOGDIR" ]; then
+  LOGDIR="$PERSISTENT_CONFIG/logs"
+  mkdir -p "$LOGDIR" 2>/dev/null
+fi
+LOGFILE="$LOGDIR/ghostgms_service.log"
+exec >> "$LOGFILE" 2>&1
+
+GMS_PACKAGE="com.google.android.gms"
+
+# Log start time with command
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] GhostGMS Service started with command: $COMMAND"
+echo "[INFO] MODDIR=$MODDIR"
+
+# Load user preferences with fallback to persistent location
+if [ -f "$MODDIR/config/user_prefs" ]; then
+  . "$MODDIR/config/user_prefs"
+  echo "[INFO] User preferences loaded from module directory"
+elif [ -f "$PERSISTENT_CONFIG/user_prefs" ]; then
+  echo "[INFO] User preferences found in persistent fallback, copying to module directory"
+  mkdir -p "$MODDIR/config" 2>/dev/null
+  cp "$PERSISTENT_CONFIG/user_prefs" "$MODDIR/config/user_prefs" 2>/dev/null
+  chmod 644 "$MODDIR/config/user_prefs" 2>/dev/null
+  . "$PERSISTENT_CONFIG/user_prefs"
+else
+  echo "[WARNING] User preferences not found, creating safe defaults"
+  mkdir -p "$MODDIR/config" 2>/dev/null
+  {
+    echo "ENABLE_GHOSTED=1"
+    echo "ENABLE_LOG_DISABLE=1"
+    echo "ENABLE_BLUR_DISABLE=0"
+    echo "ENABLE_SERVICES_DISABLE=1"
+  } > "$MODDIR/config/user_prefs" 2>/dev/null
+  chmod 644 "$MODDIR/config/user_prefs" 2>/dev/null
+  # Also save to persistent fallback
+  mkdir -p "$PERSISTENT_CONFIG" 2>/dev/null
+  cp "$MODDIR/config/user_prefs" "$PERSISTENT_CONFIG/user_prefs" 2>/dev/null
+  chmod 644 "$PERSISTENT_CONFIG/user_prefs" 2>/dev/null
+  # Load the defaults
+  if [ -f "$MODDIR/config/user_prefs" ]; then
+    . "$MODDIR/config/user_prefs"
+  elif [ -f "$PERSISTENT_CONFIG/user_prefs" ]; then
+    . "$PERSISTENT_CONFIG/user_prefs"
+  else
+    # Inline defaults as last resort
+    ENABLE_GHOSTED=1; ENABLE_LOG_DISABLE=1
+    ENABLE_BLUR_DISABLE=0; ENABLE_SERVICES_DISABLE=1
+    echo "[WARNING] Could not write config files, using inline defaults"
+  fi
+fi
+
+# Load GMS categories preferences with fallback
+echo "[INFO] Loading GMS categories preferences"
+if [ -f "$MODDIR/config/gms_categories" ]; then
+  . "$MODDIR/config/gms_categories"
+  echo "[INFO] GMS categories loaded from module directory"
+elif [ -f "$PERSISTENT_CONFIG/gms_categories" ]; then
+  echo "[INFO] GMS categories found in persistent fallback, copying to module directory"
+  mkdir -p "$MODDIR/config" 2>/dev/null
+  cp "$PERSISTENT_CONFIG/gms_categories" "$MODDIR/config/gms_categories" 2>/dev/null
+  chmod 644 "$MODDIR/config/gms_categories" 2>/dev/null
+  . "$PERSISTENT_CONFIG/gms_categories"
+else
+  echo "[WARNING] GMS categories file not found, using defaults"
+  # Default values for GMS service categories
+  DISABLE_ADS=1
+  DISABLE_TRACKING=1
+  DISABLE_ANALYTICS=1
+  DISABLE_REPORTING=1
+  DISABLE_BACKGROUND=1
+  DISABLE_UPDATE=1
+  DISABLE_LOCATION=0
+  DISABLE_GEOFENCE=0
+  DISABLE_NEARBY=0
+  DISABLE_CAST=0
+  DISABLE_DISCOVERY=0
+  DISABLE_SYNC=0
+  DISABLE_CLOUD=0
+  DISABLE_AUTH=0
+  DISABLE_WALLET=0
+  DISABLE_PAYMENT=0
+  DISABLE_WEAR=0
+  DISABLE_FITNESS=0
+fi
+
+
+# Function to process service based on category
+toggle_gms_service() {
+  local FULL_SERVICE_NAME=$1
+  local CATEGORY=$2
+  local ACTION=$3
+  local SHOULD_DISABLE=0
+  
+  # Skip if category is not set or service is not properly formatted
+  if [ -z "$CATEGORY" ] || [ "$CATEGORY" = "null" ]; then
+    echo "[INFO] Skipping service $FULL_SERVICE_NAME (no category)"
+    return
+  fi
+
+  case "$FULL_SERVICE_NAME" in
+    */*) ;;
+    *) FULL_SERVICE_NAME="${GMS_PACKAGE}/${FULL_SERVICE_NAME}" ;;
+  esac
+  
+  # If action is "enable", we enable all services
+  if [ "$ACTION" = "enable" ]; then
+    echo "[INFO] Enabling service $FULL_SERVICE_NAME"
+    pm enable "$FULL_SERVICE_NAME" >/dev/null 2>&1
+    return
+  fi
+  
+  # For disable action, determine if we should disable based on category
+  case "$CATEGORY" in
+    "ads")        SHOULD_DISABLE=$DISABLE_ADS ;;
+    "tracking")   SHOULD_DISABLE=$DISABLE_TRACKING ;;
+    "analytics")  SHOULD_DISABLE=$DISABLE_ANALYTICS ;;
+    "reporting")  SHOULD_DISABLE=$DISABLE_REPORTING ;;
+    "background") SHOULD_DISABLE=$DISABLE_BACKGROUND ;;
+    "update")     SHOULD_DISABLE=$DISABLE_UPDATE ;;
+    "location")   SHOULD_DISABLE=$DISABLE_LOCATION ;;
+    "geofence")   SHOULD_DISABLE=$DISABLE_GEOFENCE ;;
+    "nearby")     SHOULD_DISABLE=$DISABLE_NEARBY ;;
+    "cast")       SHOULD_DISABLE=$DISABLE_CAST ;;
+    "discovery")  SHOULD_DISABLE=$DISABLE_DISCOVERY ;;
+    "sync")       SHOULD_DISABLE=$DISABLE_SYNC ;;
+    "cloud")      SHOULD_DISABLE=$DISABLE_CLOUD ;;
+    "auth")       SHOULD_DISABLE=$DISABLE_AUTH ;;
+    "wallet")     SHOULD_DISABLE=$DISABLE_WALLET ;;
+    "payment")    SHOULD_DISABLE=$DISABLE_PAYMENT ;;
+    "wear")       SHOULD_DISABLE=$DISABLE_WEAR ;;
+    "fitness")    SHOULD_DISABLE=$DISABLE_FITNESS ;;
+    "core"|"essential")
+      SHOULD_DISABLE=0
+      ;;
+    *)
+      echo "[WARNING] Unknown category: '$CATEGORY' for service $FULL_SERVICE_NAME"
+      return
+      ;;
+  esac
+  
+  # Disable service based on category preferences
+  if [ "$SHOULD_DISABLE" = "1" ]; then
+    echo "[INFO] Disabling $FULL_SERVICE_NAME (category: $CATEGORY)"
+    # Use disable-user --user 0 for maximum compatibility
+    pm disable-user --user 0 "$FULL_SERVICE_NAME" >/dev/null 2>&1 || \
+      pm disable "$FULL_SERVICE_NAME" >/dev/null 2>&1 || \
+      echo "[WARNING] Could not disable $FULL_SERVICE_NAME"
+  else
+    echo "[INFO] Keeping $FULL_SERVICE_NAME enabled (category: $CATEGORY)"
+    pm enable --user 0 "$FULL_SERVICE_NAME" >/dev/null 2>&1 || \
+      pm enable "$FULL_SERVICE_NAME" >/dev/null 2>&1 || \
+      echo "[WARNING] Could not enable $FULL_SERVICE_NAME"
+  fi
+  
+  # Small delay to prevent overwhelming the system with rapid pm commands
+  sleep 0.05
+}
+
+# Process services from gmslist.txt
+process_services() {
+  local ACTION=$1
+  echo "[INFO] Processing GMS services with action: $ACTION"
+  
+  if [ ! -f "$MODDIR/gmslist.txt" ]; then
+    echo "[ERROR] gmslist.txt not found. Cannot proceed with service toggling."
+    return 1
+  fi
+  
+  local COUNTER=0
+  
+  while IFS="|" read -r SERVICE CATEGORY || [ -n "$SERVICE" ]; do
+    # Skip comments and empty lines
+    case "$SERVICE" in
+      \#*|"") continue ;;
+    esac
+    
+    # Trim whitespace from both service name and category
+    SERVICE=$(echo "$SERVICE" | tr -d '[:space:]')
+    CATEGORY=$(echo "$CATEGORY" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    
+    toggle_gms_service "$SERVICE" "$CATEGORY" "$ACTION"
+    COUNTER=$((COUNTER+1))
+  done < "$MODDIR/gmslist.txt"
+  
+  echo "[INFO] Processed $COUNTER services"
+  return 0
+}
+
+# Wait for Settings database to be ready with timeout
+wait_for_settings_ready() {
+  local max_attempts=30
+  local attempt=0
+  
+  echo "[INFO] Waiting for Settings database to be ready..."
+  
+  while [ $attempt -lt $max_attempts ]; do
+    # Test if settings command works
+    if settings get global device_provisioned >/dev/null 2>&1; then
+      echo "[INFO] Settings database ready after $((attempt + 1)) seconds"
+      return 0
+    fi
+    
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  
+  echo "[WARNING] Settings database not ready after $max_attempts seconds, proceeding anyway (may cause transaction errors)"
+  return 1
+}
+
+# Safely put settings with retry logic
+safe_settings_put() {
+  local key=$1
+  local value=$2
+  local max_retries=3
+  local retry=0
+  
+  while [ $retry -lt $max_retries ]; do
+    if settings put global "$key" "$value" >/dev/null 2>&1; then
+      return 0
+    fi
+    
+    retry=$((retry + 1))
+    if [ $retry -lt $max_retries ]; then
+      echo "[WARNING] Failed to set $key, retrying in 2 seconds (attempt $retry/$max_retries)"
+      sleep 2
+    fi
+  done
+  
+  echo "[ERROR] Failed to set $key after $max_retries attempts (may be read-only or system lock)"
+  return 1
+}
+
+# Function to disable GMS logs
+disable_gms_logs() {
+  if [ "$ENABLE_LOG_DISABLE" = "1" ]; then
+    echo "[INFO] Disabling GMS logging"
+    
+    # Wait for settings to be ready
+    wait_for_settings_ready
+    
+    # Use safe_settings_put to handle errors and retries
+    safe_settings_put "gmscorestat_enabled" "0"
+    safe_settings_put "play_store_panel_logging_enabled" "0"
+    safe_settings_put "clearcut_events" "0"
+    safe_settings_put "clearcut_gcm" "0"
+    safe_settings_put "phenotype__debug_bypass_phenotype" "1"
+    safe_settings_put "phenotype_boot_count" "99"
+    safe_settings_put "phenotype_flags" "disable_log_upload=1,disable_log_for_missing_debug_id=1"
+    
+    # Disable analytics and error reporting
+    safe_settings_put "ga_collection_enabled" "0"
+    safe_settings_put "clearcut_enabled" "0"
+    safe_settings_put "analytics_enabled" "0"
+    safe_settings_put "uploading_enabled" "0"
+    safe_settings_put "bug_report_in_power_menu" "0"
+    
+    # Disable usage stats
+    safe_settings_put "usage_stats_enabled" "0"
+    safe_settings_put "usagestats_collection_enabled" "0"
+    
+    echo "[INFO] GMS logging disable operations completed"
+  else
+    echo "[INFO] GMS logging not disabled (user preference)"
+  fi
+}
+
+# Main functionality based on command
+case "$COMMAND" in
+  "disable"|"off")
+    echo "[INFO] Disabling GMS services..."
+    if [ "$ENABLE_SERVICES_DISABLE" = "1" ] && [ -f "$MODDIR/gmslist.txt" ]; then
+      process_services "disable"
+    else
+      echo "[INFO] Service disabling not enabled by user preference"
+    fi
+    disable_gms_logs
+    ;;
+    
+  "enable"|"on")
+    echo "[INFO] Enabling GMS services..."
+    if [ -f "$MODDIR/gmslist.txt" ]; then
+      process_services "enable"
+    else
+      echo "[ERROR] gmslist.txt not found. Cannot proceed with service enabling."
+    fi
+    ;;
+    
+  "boot")
+    echo "[INFO] Processing boot-time GMS configuration..."
+    sleep 10
+    if [ "$ENABLE_SERVICES_DISABLE" = "1" ] && [ -f "$MODDIR/gmslist.txt" ]; then
+      process_services "disable"
+    else
+      echo "[INFO] Service disabling not enabled by user preference"
+    fi
+    disable_gms_logs
+    ;;
+    
+  "status")
+    echo "[INFO] GhostGMS status:"
+    echo "[INFO]   ENABLE_GHOSTED=$ENABLE_GHOSTED"
+    echo "[INFO]   ENABLE_LOG_DISABLE=$ENABLE_LOG_DISABLE"
+    echo "[INFO]   ENABLE_BLUR_DISABLE=$ENABLE_BLUR_DISABLE"
+    echo "[INFO]   ENABLE_SERVICES_DISABLE=$ENABLE_SERVICES_DISABLE"
+    echo "[INFO]   gmslist.txt: $([ -f "$MODDIR/gmslist.txt" ] && echo found || echo MISSING)"
+    ;;
+    
+  *)
+    echo "[INFO] Unknown command: $COMMAND"
+    echo "[INFO] Valid commands: enable, disable, boot, status"
+    ;;
+esac
+
+# Log completion
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] GhostGMS Service completed successfully"
+exit 0 
