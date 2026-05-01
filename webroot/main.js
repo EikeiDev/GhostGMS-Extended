@@ -1,16 +1,22 @@
 const categories = [
-{ id: 'ADS', label: 'Block Advertising', desc: 'Google Ad services' },
-{ id: 'TRACKING', label: 'Block Tracking', desc: 'User activity tracking' },
-{ id: 'ANALYTICS', label: 'Block Analytics', desc: 'Firebase & GMS Analytics' },
-{ id: 'REPORTING', label: 'Block Reporting', desc: 'Bug & Crash reports' },
-{ id: 'BACKGROUND', label: 'Block Background', desc: 'Optional background tasks' },
-{ id: 'UPDATE', label: 'Block Updates', desc: 'GMS auto-update services' },
-{ id: 'LOCATION', label: 'Block Location', desc: 'Optional location features' },
-{ id: 'GEOFENCE', label: 'Block Geofencing', desc: 'Geofence-based triggers' },
-{ id: 'NEARBY', label: 'Block Nearby Share', desc: 'Quick Share & Nearby services' },
-{ id: 'SYNC', label: 'Block Sync', desc: 'Cloud & Account sync' },
-{ id: 'WEAR', label: 'Block Wear OS', desc: 'Smartwatch connectivity' },
-{ id: 'FITNESS', label: 'Block Fitness', desc: 'Google Fit & Health' }
+{ id: 'ADS', label: 'Block Advertising', desc: 'Google Ad services', safety: 'safe' },
+{ id: 'TRACKING', label: 'Block Tracking', desc: 'User activity tracking', safety: 'safe' },
+{ id: 'ANALYTICS', label: 'Block Analytics', desc: 'Firebase & GMS Analytics', safety: 'safe' },
+{ id: 'REPORTING', label: 'Block Reporting', desc: 'Bug & Crash reports', safety: 'safe' },
+{ id: 'FITNESS', label: 'Block Fitness', desc: 'Google Fit & Health', safety: 'safe' },
+{ id: 'DISCOVERY', label: 'Block Discovery', desc: 'Google Device Discovery', safety: 'safe' },
+{ id: 'BACKGROUND', label: 'Block Background', desc: 'Push notifications & Check-ins', safety: 'caution' },
+{ id: 'UPDATE', label: 'Block Updates', desc: 'GMS auto-update services', safety: 'caution' },
+{ id: 'GEOFENCE', label: 'Block Geofencing', desc: 'Geofence-based triggers', safety: 'caution' },
+{ id: 'NEARBY', label: 'Block Nearby Share', desc: 'Quick Share services', safety: 'caution' },
+{ id: 'CAST', label: 'Block Cast', desc: 'Chromecast & Media sharing', safety: 'caution' },
+{ id: 'SYNC', label: 'Block Sync', desc: 'Cloud & Account sync', safety: 'caution' },
+{ id: 'WEAR', label: 'Block Wear OS', desc: 'Smartwatch connectivity', safety: 'caution' },
+{ id: 'LOCATION', label: 'Block Location', desc: 'Navigation & Maps accuracy', safety: 'warning' },
+{ id: 'AUTH', label: 'Block Auth', desc: 'Google Account sign-in', safety: 'warning' },
+{ id: 'CLOUD', label: 'Block Cloud', desc: 'Google Cloud services', safety: 'warning' },
+{ id: 'WALLET', label: 'Block Wallet', desc: 'Google Wallet & NFC', safety: 'warning' },
+{ id: 'PAYMENT', label: 'Block Payment', desc: 'Google Pay transactions', safety: 'warning' }
 ];
 const MOD_PATH = '/data/adb/modules/ghostgms/config/user_prefs';
 const PERSIST_PATH = '/data/adb/ghostgms/user_prefs';
@@ -95,7 +101,7 @@ const grid = document.getElementById('service-grid');
 categories.forEach(cat => {
 const card = document.createElement('div');
 card.className = 'card';
-card.innerHTML = `<div class="card-info"><span class="card-label">${cat.label}</span><span class="card-desc">${cat.desc}</span></div><label class="switch"><input type="checkbox" id="DISABLE_${cat.id}"><span class="slider"></span></label>`;
+card.innerHTML = `<div class="card-info"><span class="card-label ${cat.safety}">${cat.label}</span><span class="card-desc">${cat.desc}</span></div><label class="switch"><input type="checkbox" id="DISABLE_${cat.id}"><span class="slider"></span></label>`;
 grid.appendChild(card);
 });
 document.getElementById('save-btn').addEventListener('click', savePrefs);
